@@ -1,5 +1,6 @@
 #include <iostream>
-#include <vector>
+#include <stack>
+
 #include "freelist.hpp"
 
 class Mem
@@ -24,8 +25,20 @@ int Mem::num = 1;
 
 int main()
 {
-    FreeList <Mem> mem_free_lst(3);
+    FreeList <Mem> mem_free_lst(8);
+    std::stack <Mem *> ptrs;
     
-    auto p1 = mem_free_lst.constructOnFreePlace("Hello!\n");
-    p1->~Mem();
+    try {
+        while (true) {
+            ptrs.push(mem_free_lst.constructOnFreePlace("something\n"));
+        }
+    }
+    catch (std::runtime_error &er)  {
+        std::cout << "Exception! " << er.what();
+    }
+
+    while(!ptrs.empty()) {
+        mem_free_lst.destructAndMarkAsFree(ptrs.top());
+        ptrs.pop();
+    }
 }

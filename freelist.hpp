@@ -8,9 +8,10 @@
 
 #include <cassert>
 #include <stdexcept>
-#ifdef _DEBUG
-#include <iostream>
-#endif // _DEBUG
+
+#ifdef FL_THREAD_SAFETY
+#include <mutex>
+#endif // FL_THREAD_SAFETY
 
 // FreeList can prevent fragmentation, improve
 // locality of reference, has a simple interface,
@@ -27,9 +28,22 @@ public:
     explicit FreeList(const size_t init_list_size);
 
     // --------------------------
+    // constructor for pre-allocated data
     FreeList(Type * const init_data,
              Type ** const init_free_segments,
              const size_t init_list_size);
+
+    // --------------------------
+    // copy constructor is forbidden
+    FreeList(const FreeList &) = delete;
+
+    // --------------------------
+    // assigment is forbidden for FreeList
+    operator =(const FreeList &) = delete;
+
+    // --------------------------
+    // move constructor
+    FreeList(FreeList &&rv);
 
     ~FreeList();
 
@@ -50,8 +64,19 @@ public:
     // operates only pointer.
     void markAsFree(Type * const ptr);
 
+    // ---------------------
+    // calls destructor for the object and then calls
+    // "markAsFree" function
+    void destructAndMarkAsFree(Type * const ptr);
+
+    // ---------------------
+    // return size in bytes allocated for
+    // data
     size_t getPhysicalSize() const;
 
+    // ---------------------
+    // calculates the size will be allocated for data in
+    // list of "size" elements
     static size_t calculatePhysicalSize(const size_t size);
 
 private:
@@ -69,6 +94,10 @@ private:
     // pointers to free segments (stack)
     char **free_segments;
 
+#ifdef FL_THREAD_SAFETY
+    std::mutex fl_mutex;
+#endif // FL_THREAD_SAFETY
+
     // ---------------------
     // marks all memory as free.
     // Required only for initialization
@@ -82,11 +111,6 @@ try : free_resources_on_destr(true),
       data(new char[list_size * sizeof(Type)]),
       free_segments(new char *[list_size])
     {
-#ifdef _DEBUG
-        std::cout << "Construction of FreeList (recieved size = " << init_list_size
-                  << ")\nAllocated " << sizeof(Type) * list_size << " bytes for segments.\n"
-                  << "Data starts from ptr: " << (void *)data << '\n';
-#endif // _DEBUG
         freeAll();
     }
     catch (std::bad_alloc &) {
@@ -108,11 +132,22 @@ FreeList <Type>::FreeList(Type * const init_data,
 }
 
 template <class Type>
+FreeList <Type>::FreeList(FreeList &&rv)
+: free_resources_on_destr(rv.free_resources_on_destr),
+  data(rv.data),
+  free_segments(rv.free_segments),
+  list_size(rv.list_size),
+  index_top(rv.index_top)
+{
+    // ------------------------
+    // we dont want previous owner of resources to
+    // free it, because there is a new owner
+    rv.free_resources_on_destr = false;
+}
+
+template <class Type>
 FreeList <Type>::~FreeList()
 {
-#ifdef _DEBUG
-    std::cout << "Destruction of FreeList.\n";
-#endif // _DEBUG
     if (free_resources_on_destr) {
         delete [] data;
         delete [] free_segments;
@@ -122,21 +157,19 @@ FreeList <Type>::~FreeList()
 template <class Type>
 Type *FreeList <Type>::getFreePlace()
 {
-        // ---------------------
-        // check is there is at least one free place
-        if (index_top == 0)
-            throw std::runtime_error("FreeList stack overflow\n");
+#ifdef FL_THREAD_SAFETY
+    std::lock_guard <std::mutex> lg(fl_mutex);
+#endif // FL_THREAD_SAFETY
 
-#ifdef _DEBUG
-        std::cout << "Get request. Will return ptr: "
-                  << (void *)free_segments[index_top - 1]
-                  << '\n';
-#endif // _DEBUG
+    // ---------------------
+    // check is there is at least one free place
+    if (index_top == 0)
+        throw std::runtime_error("FreeList stack overflow\n");
 
-        // --------------------
-        // return pointer to the free segment
-        return reinterpret_cast <Type *>
-               (free_segments[--index_top]);
+    // --------------------
+    // return pointer to the free segment
+    return reinterpret_cast <Type *>
+            (free_segments[--index_top]);
 }
 
 template <class Type>
@@ -149,9 +182,10 @@ Type *FreeList <Type>::constructOnFreePlace(Args... args)
 template <class Type>
 void FreeList <Type>::markAsFree(Type * const ptr)
 {
-#ifdef _DEBUG
-    std::cout << "Free request. Will free ptr: " << (void *)ptr << '\n';
-#endif // _DEBUG
+#ifdef FL_THREAD_SAFETY
+    std::lock_guard <std::mutex> lg(fl_mutex);
+#endif // FL_THREAD_SAFETY
+
     // ----------------------
     // check if adress is correct
     assert(reinterpret_cast <char *>(ptr) >= data);
@@ -164,6 +198,13 @@ void FreeList <Type>::markAsFree(Type * const ptr)
 
     free_segments[index_top++] = reinterpret_cast <char *>
                                  (ptr);
+}
+
+template <class Type>
+void FreeList <Type>::destructAndMarkAsFree(Type * const ptr)
+{
+    markAsFree(ptr);
+    ptr->~Type();
 }
 
 template <class Type>
