@@ -3,6 +3,9 @@
 // in "Game Programming Gems 4" book about preventing
 // memory fragmentation
 
+// define "FL_THREAD_SAFETY" to compile the thread safe
+// variant of this library
+
 #ifndef FREELIST_HPP
 #define FREELIST_HPP
 
@@ -15,8 +18,7 @@
 
 // FreeList can prevent fragmentation, improve
 // locality of reference, has a simple interface,
-// is type-safe, reusable. It is NOT THREAD_SAFE YET.
-//! TODO: thread safety
+// is type safe, thread safe and reusable
 
 template <class Type>
 class FreeList
