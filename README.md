@@ -1,6 +1,6 @@
 # FreeList documentation
 
-I reccomend you to rewiew the [freelist.hpp](freelist.hpp) file for understanding of its interfase. There are many commentaries so it is
+I reccomend you to rewiew the [freelist.hpp](include/freelist.hpp) file for understanding of its interfase. There are many commentaries so it is
 going to be easy. Moveover, this class is designed to have simple interface.
 
 Few words about `FreeList` class:
