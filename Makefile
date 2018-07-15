@@ -1,2 +1,2 @@
 all:
-	g++ -o freelist_example.exe main.cpp freelist.hpp -std=c++17 -Wall
+	g++ -o freelist_example.exe main.cpp -std=c++17 -Wall

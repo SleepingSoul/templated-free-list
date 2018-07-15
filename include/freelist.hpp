@@ -136,10 +136,10 @@ FreeList <Type>::FreeList(Type * const init_data,
 template <class Type>
 FreeList <Type>::FreeList(FreeList &&rv)
 : free_resources_on_destr(rv.free_resources_on_destr),
-  data(rv.data),
-  free_segments(rv.free_segments),
   list_size(rv.list_size),
-  index_top(rv.index_top)
+  index_top(rv.index_top),
+  data(rv.data),
+  free_segments(rv.free_segments)
 {
     // ------------------------
     // we dont want previous owner of resources to

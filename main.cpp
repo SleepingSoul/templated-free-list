@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stack>
 
-#include "freelist.hpp"
+#include "include/freelist.hpp"
 
 class Mem
 {
@@ -21,6 +21,7 @@ private:
     char buf[200];
 };
 
+
 int Mem::num = 1;
 
 int main()
@@ -37,8 +38,12 @@ int main()
         std::cout << "Exception! " << er.what();
     }
 
+    std::cout << '\n';
+
+    FreeList <Mem> fld(std::move(mem_free_lst));
+
     while(!ptrs.empty()) {
-        mem_free_lst.destructAndMarkAsFree(ptrs.top());
+        fld.destructAndMarkAsFree(ptrs.top());
         ptrs.pop();
     }
 }
