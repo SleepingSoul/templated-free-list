@@ -24,10 +24,8 @@ int Mem::num = 1;
 
 int main()
 {
-    FreeList <Mem> mem_free_lst(8);
+    FreeList <Mem> mem_free_lst(3);
     
-    auto p1 = mem_free_lst.getFreePlace(),
-         p2 = mem_free_lst.getFreePlace();
-    mem_free_lst.markAsFree(p1);
-    mem_free_lst.getFreePlace();
+    auto p1 = mem_free_lst.constructOnFreePlace("Hello!\n");
+    p1->~Mem();
 }

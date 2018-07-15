@@ -26,6 +26,11 @@ public:
     // objects of type "Type"
     explicit FreeList(const size_t init_list_size);
 
+    // --------------------------
+    FreeList(Type * const init_data,
+             Type ** const init_free_segments,
+             const size_t init_list_size);
+
     ~FreeList();
 
     // ---------------------
@@ -33,13 +38,26 @@ public:
     // memory allocated on this pointer should be freed before this call,
     // because otherwise there is a risk it will be overrided
     Type *getFreePlace();
+
+    // ---------------------
+    // acts as the previous one, but also created as object of type
+    // "Type" in place and passes "args" in its constructor.
+    template <class ...Args>
+    Type *constructOnFreePlace(Args... args);
     
     // ---------------------
     // marks pointer as free. Do not manage memory,
     // operates only pointer.
     void markAsFree(Type * const ptr);
 
+    size_t getPhysicalSize() const;
+
+    static size_t calculatePhysicalSize(const size_t size);
+
 private:
+    // this value depends on constructor called
+    // to create this instance of FreeList
+    bool free_resources_on_destr;
     // size of the FreeList (number of objects which
     // can be stored here)
     const size_t list_size;
@@ -59,7 +77,8 @@ private:
 
 template <class Type>
 FreeList <Type>::FreeList(const size_t init_list_size)
-try : list_size(init_list_size),
+try : free_resources_on_destr(true),
+      list_size(init_list_size),
       data(new char[list_size * sizeof(Type)]),
       free_segments(new char *[list_size])
     {
@@ -77,13 +96,27 @@ try : list_size(init_list_size),
 }
 
 template <class Type>
+FreeList <Type>::FreeList(Type * const init_data,
+                          Type ** const init_free_segments,
+                          const size_t init_list_size)
+: free_resources_on_destr(false),
+  data(init_data),
+  free_segments(init_free_segments),
+  list_size(init_list_size)
+{
+    freeAll();
+}
+
+template <class Type>
 FreeList <Type>::~FreeList()
 {
 #ifdef _DEBUG
     std::cout << "Destruction of FreeList.\n";
 #endif // _DEBUG
-    delete [] data;
-    delete [] free_segments;
+    if (free_resources_on_destr) {
+        delete [] data;
+        delete [] free_segments;
+    }
 }
 
 template <class Type>
@@ -107,6 +140,13 @@ Type *FreeList <Type>::getFreePlace()
 }
 
 template <class Type>
+    template <class ...Args>
+Type *FreeList <Type>::constructOnFreePlace(Args... args)
+{
+    return new (getFreePlace()) Type(args...);
+}
+
+template <class Type>
 void FreeList <Type>::markAsFree(Type * const ptr)
 {
 #ifdef _DEBUG
@@ -124,6 +164,18 @@ void FreeList <Type>::markAsFree(Type * const ptr)
 
     free_segments[index_top++] = reinterpret_cast <char *>
                                  (ptr);
+}
+
+template <class Type>
+size_t FreeList <Type>::getPhysicalSize() const
+{
+    return list_size * sizeof(Type);
+}
+
+template <class Type>
+size_t FreeList <Type>::calculatePhysicalSize(const size_t size)
+{
+    return size * sizeof(Type);
 }
 
 template <class Type>
