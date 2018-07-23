@@ -112,13 +112,13 @@ try : free_resources_on_destr(true),
       list_size(init_list_size),
       data(new char[list_size * sizeof(Type)]),
       free_segments(new char *[list_size])
-    {
-        freeAll();
-    }
-    catch (std::bad_alloc &) {
-        // ----------------------
-        // throw bad alloc exception to the user code.
-        throw;
+{
+    freeAll();
+}
+catch (std::bad_alloc &) {
+    // ----------------------
+    // throw bad alloc exception to the user code.
+    throw;
 }
 
 template <class Type>
@@ -205,6 +205,10 @@ void FreeList <Type>::markAsFree(Type * const ptr)
 template <class Type>
 void FreeList <Type>::destructAndMarkAsFree(Type * const ptr)
 {
+#ifdef FL_THREAD_SAFETY
+    std::lock_guard <std::mutex> lg(fl_mutex);
+#endif // FL_THREAD_SAFETY
+
     markAsFree(ptr);
     ptr->~Type();
 }
